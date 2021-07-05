@@ -8,38 +8,40 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var conversionType = 0
+    @State private var measurement = 0
     @State private var inputValue = ""
     @State private var inputUnit = 0
     @State private var outputUnit = 0
 
-    let conversionTypes = [
-        ConversionType(
+    let measurements = [
+        Measurement(
             name: "Length",
             units: [
-                Unit(name: "meter"),
-                Unit(name: "kilometer", multiplier: 1000),
-                Unit(name: "foot", multiplier: 0.3048),
-                Unit(name: "yard", multiplier: 0.9144),
-                Unit(name: "mile", multiplier: 1609.34)
+                Unit(name: "m"),
+                Unit(name: "km",  multiplier: 1000),
+                Unit(name: "ft",  multiplier: 0.3048),
+                Unit(name: "yd",  multiplier: 0.9144),
+                Unit(name: "ch",  multiplier: 20.117),
+                Unit(name: "fur", multiplier: 201.17),
+                Unit(name: "mi",  multiplier: 1609.34)
             ]
         ),
-        ConversionType(
+        Measurement(
             name: "Temperature",
             units: [
-                Unit(name: "Celsius"),
-                Unit(name: "Fahrenheit", multiplier: 5 / 9, offset: 32),
-                Unit(name: "Kelvin", multiplier: 1.0, offset: 273.15)
+                Unit(name: "C"),
+                Unit(name: "F", multiplier: 5 / 9, offset: 32),
+                Unit(name: "K", multiplier: 1.0, offset: 273.15)
             ]
         ),
-        ConversionType(
+        Measurement(
             name: "Time",
             units: [
-                Unit(name: "second"),
-                Unit(name: "minute", multiplier: 60),
-                Unit(name: "hour", multiplier: 60 * 60),
-                Unit(name: "day", multiplier: 24 * 60 * 60),
-                Unit(name: "week", multiplier: 7 * 24 * 60 * 60)
+                Unit(name: "s"),
+                Unit(name: "min", multiplier: 60),
+                Unit(name: "h",   multiplier: 60 * 60),
+                Unit(name: "d",   multiplier: 24 * 60 * 60),
+                Unit(name: "wk",  multiplier: 7 * 24 * 60 * 60)
             ]
         )
     ]
@@ -47,7 +49,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             Form {
-                selectConversionType
+                selectMeasurement
 
                 inputValueAndUnit
 
@@ -57,14 +59,14 @@ struct ContentView: View {
         }
     }
 
-    var selectConversionType: some View {
+    var selectMeasurement: some View {
         Section {
-            Picker("Conversion type", selection: $conversionType) {
-                ForEach(0 ..< conversionTypes.count) {
-                    Text(conversionTypes[$0].name)
+            Picker("Measurement", selection: $measurement) {
+                ForEach(0 ..< measurements.count) {
+                    Text(measurements[$0].name)
                 }
             }
-            .onChange(of: conversionType) { _ in
+            .onChange(of: measurement) { _ in
                 inputUnit = 0
                 outputUnit = 0
             }
@@ -76,44 +78,43 @@ struct ContentView: View {
             TextField("Enter value", text: $inputValue)
                 .keyboardType(.decimalPad)
             Picker("Input units", selection: $inputUnit) {
-                ForEach(0 ..< conversionTypes[conversionType].units.count) {
-                    Text(conversionTypes[conversionType].units[$0].name)
+                ForEach(0 ..< measurements[measurement].units.count) {
+                    Text(measurements[measurement].units[$0].name)
                 }
             }
             .pickerStyle(SegmentedPickerStyle())
-            .id(conversionType)
+            .id(measurement)
         }
     }
 
     var outputValueAndUnit: some View {
         Section(header: Text("To")) {
-            Text("\(convertedValue, specifier: "%5g")")
+            Text("\(convertedValue, specifier: "%g")")
             Picker("Output units", selection: $outputUnit) {
-                ForEach(0 ..< conversionTypes[conversionType].units.count) {
-                    Text(conversionTypes[conversionType].units[$0].name)
+                ForEach(0 ..< measurements[measurement].units.count) {
+                    Text(measurements[measurement].units[$0].name)
                 }
             }
             .pickerStyle(SegmentedPickerStyle())
-            .id(conversionType)
+            .id(measurement)
         }
     }
 
     var convertedValue: Double {
         let input = Double(inputValue) ?? 0.0
-        guard inputUnit < conversionTypes[conversionType].units.count else {
+        guard inputUnit < measurements[measurement].units.count else {
             return input
         }
-        guard outputUnit < conversionTypes[conversionType].units.count else {
+        guard outputUnit < measurements[measurement].units.count else {
             return input
         }
-        let unitIn = conversionTypes[conversionType].units[inputUnit]
-        let unitOut = conversionTypes[conversionType].units[outputUnit]
-        let siValue = (input - unitIn.offset) * unitIn.multiplier
-        return (siValue / unitOut.multiplier) + unitOut.offset
+        let unitIn = measurements[measurement].units[inputUnit]
+        let unitOut = measurements[measurement].units[outputUnit]
+        return unitIn.convert(from: input, with: unitOut)
     }
 }
 
-struct ConversionType {
+struct Measurement {
     var name: String
     var units: [Unit]
 }
@@ -122,6 +123,13 @@ struct Unit {
     var name: String
     var multiplier: Double = 1.0
     var offset: Double = 0.0
+}
+
+extension Unit {
+    func convert(from value: Double, with unit: Unit) -> Double {
+        let siValue = (value - self.offset) * self.multiplier
+        return (siValue / unit.multiplier) + unit.offset
+    }
 }
 
 struct ContentView_Previews: PreviewProvider {
